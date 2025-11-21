@@ -8,35 +8,42 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import dev.eamoretti.amorettiexchange.presentation.transactions.components.Transaction
+// Importante: Usar el viewModel de Compose y nuestro componente actualizado
+import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.eamoretti.amorettiexchange.presentation.transactions.components.TransactionListItem
-import dev.eamoretti.amorettiexchange.presentation.transactions.components.TransactionType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionsScreen(
     onMenuClick: () -> Unit,
-    onNavigateToRegisterTransaction: () -> Unit
+    onNavigateToRegisterTransaction: () -> Unit,
+    // Inyectamos el ViewModel
+    viewModel: TransactionsViewModel = viewModel()
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf("Todas") }
+    // Estado que viene de la API
+    val uiState by viewModel.uiState.collectAsState()
 
-    val transactions = listOf(
-        Transaction(TransactionType.SALE, "17/11/2025", "JAVIER ENRIQUE LUDOWIEG TELGE", "$ 6,614.30", "S/ 22,422.48", "Efectivo", "Completada"),
-        Transaction(TransactionType.SALE, "17/11/2025", "NEGOCIOS JORDI SRL", "$ 6,614.30", "S/ 22,422.48", "Efectivo", "Completada"),
-        Transaction(TransactionType.PURCHASE, "17/11/2025", "MARTINEZ LACHIRA MARIETA", "$ 12,000.00", "S/ 40,260.00", "Efectivo", "Completada"),
-        Transaction(TransactionType.SALE, "17/11/2025", "INVERSIONES OGOSI SAC", "$ 5,000.00", "S/ 16,815.00", "Efectivo", "Completada")
-    )
+    var searchQuery by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
+            // TopBar Azul
             TopAppBar(
                 title = { Text("Transacciones") },
-                navigationIcon = { IconButton(onClick = onMenuClick) { Icon(Icons.Default.Menu, contentDescription = "Menú") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF092B5A), titleContentColor = Color.White, navigationIconContentColor = Color.White)
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menú")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF092B5A),
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
             )
         },
         floatingActionButton = {
@@ -47,7 +54,7 @@ fun TransactionsScreen(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Row(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Icon(Icons.Default.Add, contentDescription = "Registrar Transacción")
+                    Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("Registrar Transacción")
                 }
@@ -55,47 +62,81 @@ fun TransactionsScreen(
         }
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
+
+            // --- Buscador ---
             OutlinedTextField(
                 value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                onValueChange = {
+                    searchQuery = it
+                    viewModel.onSearch(it) // Llama al VM para buscar en API
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 placeholder = { Text("Buscar transacción...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") }
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+                shape = RoundedCornerShape(12.dp)
             )
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip("Todas", selectedFilter) { selectedFilter = "Todas" }
-                FilterChip("Compras", selectedFilter) { selectedFilter = "Compras" }
-                FilterChip("Ventas", selectedFilter) { selectedFilter = "Ventas" }
+
+            // --- Filtros (Todas, Compras, Ventas) ---
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = uiState.filterType == null,
+                    onClick = { viewModel.onFilterChanged(null) },
+                    label = { Text("Todas") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF0A1A2F),
+                        selectedLabelColor = Color.White
+                    )
+                )
+                FilterChip(
+                    selected = uiState.filterType == 1,
+                    onClick = { viewModel.onFilterChanged(1) }, // 1 = Compras
+                    label = { Text("Compras") },
+                    leadingIcon = { if (uiState.filterType == 1) Icon(Icons.Default.Check, null) },
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFF0A1A2F), selectedLabelColor = Color.White)
+                )
+                FilterChip(
+                    selected = uiState.filterType == 2,
+                    onClick = { viewModel.onFilterChanged(2) }, // 2 = Ventas
+                    label = { Text("Ventas") },
+                    leadingIcon = { if (uiState.filterType == 2) Icon(Icons.Default.Check, null) },
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFF0A1A2F), selectedLabelColor = Color.White)
+                )
             }
-            LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                val filteredList = transactions.filter {
-                    val matchesSearch = it.clientName.contains(searchQuery, ignoreCase = true)
-                    val matchesFilter = when (selectedFilter) {
-                        "Compras" -> it.type == TransactionType.PURCHASE
-                        "Ventas" -> it.type == TransactionType.SALE
-                        else -> true
+
+            Spacer(Modifier.height(8.dp))
+
+            // --- Lista de Resultados ---
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    uiState.isLoading -> {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     }
-                    matchesSearch && matchesFilter
-                }
-                items(filteredList) { transaction ->
-                    TransactionListItem(transaction = transaction)
+                    uiState.error != null -> {
+                        Text(
+                            text = uiState.error ?: "Error",
+                            color = Color.Red,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    else -> {
+                        LazyColumn(
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(uiState.transactions) { transaction ->
+                                TransactionListItem(transaction = transaction)
+                            }
+                        }
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun FilterChip(label: String, selectedFilter: String, onClick: () -> Unit) {
-    val isSelected = label == selectedFilter
-    Button(
-        onClick = onClick,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected) Color(0xFF0A1A2F) else Color.LightGray,
-            contentColor = if (isSelected) Color.White else Color.Black
-        ),
-        shape = RoundedCornerShape(50)
-    ) {
-        Text(label)
     }
 }
