@@ -10,25 +10,27 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.eamoretti.amorettiexchange.presentation.clients.components.ClientListItem
-import dev.eamoretti.amorettiexchange.presentation.clients.model.Client
+// Importa tu modelo Cliente del paquete data.model
+import dev.eamoretti.amorettiexchange.data.model.Cliente
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientsScreen(
     onMenuClick: () -> Unit,
-    onNavigateToRegisterClient: () -> Unit
+    onNavigateToRegisterClient: () -> Unit,
+    // Inyectamos el ViewModel
+    viewModel: ClientsViewModel = viewModel()
 ) {
+    // Observamos el estado del ViewModel
+    val uiState by viewModel.uiState.collectAsState()
+
     var searchQuery by remember { mutableStateOf("") }
-    val clients = listOf(
-        Client("INVERSIONES Y NEGOCIOS CORPORATIVOS G.P.", "20611921701", "959224270"),
-        Client("INMOBILIARIA VALEISA SAC", "20510510449", "912567T088"),
-        Client("BARRERA BENAVIDES JUANA MARIA LUISA", "08208278", "908708558"),
-        Client("CARLOS ALEJANDRO CARRIONOL RAYGADA", "45371282", "989163077")
-    )
 
     Scaffold(
         topBar = {
@@ -71,12 +73,37 @@ fun ClientsScreen(
                 placeholder = { Text("Buscar cliente...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") }
             )
-            LazyColumn(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(clients.filter { it.name.contains(searchQuery, ignoreCase = true) }) { client ->
-                    ClientListItem(client = client)
+
+            // Manejo de estados: Cargando, Error o Lista
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    uiState.isLoading -> {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
+                    uiState.error != null -> {
+                        Text(
+                            text = uiState.error ?: "Error desconocido",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    else -> {
+                        // Filtramos la lista que viene de Azure
+                        val filteredClients = uiState.clients.filter {
+                            it.razonSocial.contains(searchQuery, ignoreCase = true) ||
+                                    (it.documento ?: "").contains(searchQuery)
+                        }
+
+                        LazyColumn(
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(filteredClients) { cliente ->
+                                // ¡Miren qué limpio! Pasamos el objeto directo
+                                ClientListItem(client = cliente)
+                            }
+                        }
+                    }
                 }
             }
         }
