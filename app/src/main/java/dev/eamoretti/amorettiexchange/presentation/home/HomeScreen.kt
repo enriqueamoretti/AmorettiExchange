@@ -1,10 +1,10 @@
 package dev.eamoretti.amorettiexchange.presentation.home
 
-import androidx.compose.runtime.*
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import dev.eamoretti.amorettiexchange.presentation.clients.ClientsScreen
 import dev.eamoretti.amorettiexchange.presentation.monthlybalancing.MonthlyBalancingScreen
 import dev.eamoretti.amorettiexchange.presentation.navigation.AppScreen
@@ -13,50 +13,38 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
+    currentScreen: AppScreen,
+    onScreenChange: (AppScreen) -> Unit,
     onLogout: () -> Unit,
-    onNavigateToRegisterClient: () -> Unit
+    onNavigateToRegisterClient: () -> Unit,
+    onNavigateToRegisterTransaction: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    var currentScreen by remember { mutableStateOf<AppScreen>(AppScreen.Clients) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             AppDrawer(
-                onLogout = onLogout,
-                onCloseDrawer = {
-                    scope.launch {
-                        drawerState.close()
-                    }
+                currentScreen = currentScreen,
+                onMenuItemClick = { newScreen ->
+                    onScreenChange(newScreen)
+                    scope.launch { drawerState.close() }
                 },
-                onMenuItemClick = { screen ->
-                    currentScreen = screen
-                    scope.launch {
-                        drawerState.close()
-                    }
-                },
-                currentScreen = currentScreen
+                onCloseDrawer = { scope.launch { drawerState.close() } },
+                onLogout = onLogout
             )
         }
     ) {
-        // Explicitly defining the lambda's type to () -> Unit resolves the type mismatch error.
-        // The compiler was getting confused by the `Job` return type of `scope.launch`.
-        val onMenuClick: () -> Unit = {
-            scope.launch { drawerState.open() }
-        }
+        val onMenuClick: () -> Unit = { scope.launch { drawerState.open() } }
 
-        // The `when` expression must be exhaustive. By handling all possible AppScreen states,
-        // we satisfy the compiler and create more robust code.
-        val screenContent: @Composable () -> Unit = when (currentScreen) {
-            AppScreen.Clients -> { { ClientsScreen(onMenuClick, onNavigateToRegisterClient) } }
-            AppScreen.Transactions -> { { TransactionsScreen(onMenuClick) } }
-            AppScreen.MonthlyBalancing -> { { MonthlyBalancingScreen(onMenuClick) } }
-            AppScreen.Login, AppScreen.Home, AppScreen.RegisterClient -> {
-                { ClientsScreen(onMenuClick, onNavigateToRegisterClient) }
-            }
+        // The content of the screen is now determined by the state hoisted to the NavGraph
+        when (currentScreen) {
+            AppScreen.Clients -> ClientsScreen(onMenuClick, onNavigateToRegisterClient)
+            AppScreen.Transactions -> TransactionsScreen(onMenuClick, onNavigateToRegisterTransaction)
+            AppScreen.MonthlyBalancing -> MonthlyBalancingScreen(onMenuClick)
+            // Default/fallback case
+            else -> ClientsScreen(onMenuClick, onNavigateToRegisterClient)
         }
-
-        screenContent()
     }
 }

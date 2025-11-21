@@ -18,7 +18,8 @@ import dev.eamoretti.amorettiexchange.presentation.transactions.components.Trans
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionsScreen(
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
+    onNavigateToRegisterTransaction: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("Todas") }
@@ -27,64 +28,46 @@ fun TransactionsScreen(
         Transaction(TransactionType.SALE, "17/11/2025", "JAVIER ENRIQUE LUDOWIEG TELGE", "$ 6,614.30", "S/ 22,422.48", "Efectivo", "Completada"),
         Transaction(TransactionType.SALE, "17/11/2025", "NEGOCIOS JORDI SRL", "$ 6,614.30", "S/ 22,422.48", "Efectivo", "Completada"),
         Transaction(TransactionType.PURCHASE, "17/11/2025", "MARTINEZ LACHIRA MARIETA", "$ 12,000.00", "S/ 40,260.00", "Efectivo", "Completada"),
-        Transaction(TransactionType.SALE, "17/11/2025", "INVERSIONES OGOSI SAC", "$ 5,000.00", "S/ 16,815.00", "Efectivo", "Completada"),
-        Transaction(TransactionType.SALE, "16/11/2025", "JAMA CADILLO ANGELA", "$ 6,614.30", "S/ 22,422.48", "Efectivo", "Completada")
+        Transaction(TransactionType.SALE, "17/11/2025", "INVERSIONES OGOSI SAC", "$ 5,000.00", "S/ 16,815.00", "Efectivo", "Completada")
     )
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Transacciones") },
-                navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menú")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF092B5A),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
+                navigationIcon = { IconButton(onClick = onMenuClick) { Icon(Icons.Default.Menu, contentDescription = "Menú") } },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF092B5A), titleContentColor = Color.White, navigationIconContentColor = Color.White)
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* TODO: Navigate to transaction registration */ },
+                onClick = onNavigateToRegisterTransaction,
                 containerColor = Color(0xFF0A1A2F),
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Registrar Transacción")
+                Row(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Icon(Icons.Default.Add, contentDescription = "Registrar Transacción")
+                    Spacer(Modifier.width(8.dp))
+                    Text("Registrar Transacción")
+                }
             }
         }
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
-            // Search Bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 placeholder = { Text("Buscar transacción...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") }
             )
-            // Filter Chips
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip("Todas", selectedFilter) { selectedFilter = "Todas" }
                 FilterChip("Compras", selectedFilter) { selectedFilter = "Compras" }
                 FilterChip("Ventas", selectedFilter) { selectedFilter = "Ventas" }
             }
-            // Transaction List
-            LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 val filteredList = transactions.filter {
                     val matchesSearch = it.clientName.contains(searchQuery, ignoreCase = true)
                     val matchesFilter = when (selectedFilter) {
