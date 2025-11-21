@@ -24,3 +24,18 @@ data class Transaccion(
     @SerializedName("MetodoPago") val metodoPago: String,
     @SerializedName("Estado") val estado: String
 )
+
+// Nuevo modelo para el Resumen (Tarjetas de colores)
+data class ResumenMensual(
+    @SerializedName("TotalCompraUSD") val totalCompraUSD: Double,
+    @SerializedName("TotalCompraSoles") val totalCompraSoles: Double,
+    @SerializedName("TotalVentaUSD") val totalVentaUSD: Double,
+    @SerializedName("TotalVentaSoles") val totalVentaSoles: Double,
+    @SerializedName("Utilidad") val utilidad: Double,
+    @SerializedName("TasaPromedio") val tasaPromedio: Double
+)
+
+// Nuevo modelo para la lista de Años disponibles
+data class AnioDisponible(
+    @SerializedName("Anio") val anio: Int
+)
