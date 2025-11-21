@@ -13,11 +13,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.eamoretti.amorettiexchange.presentation.navigation.AppScreen
 
 @Composable
 fun AppDrawer(
     onLogout: () -> Unit,
-    onCloseDrawer: () -> Unit
+    onCloseDrawer: () -> Unit,
+    onMenuItemClick: (AppScreen) -> Unit,
+    currentScreen: AppScreen
 ) {
     ModalDrawerSheet(
         modifier = Modifier.fillMaxHeight(),
@@ -75,45 +78,24 @@ fun AppDrawer(
             // Navigation Items
             NavigationDrawerItem(
                 label = { Text("Clientes") },
-                selected = true,
-                onClick = { /* TODO */ },
+                selected = currentScreen == AppScreen.Clients,
+                onClick = { onMenuItemClick(AppScreen.Clients) },
                 icon = { Icon(Icons.Default.People, contentDescription = "Clientes") },
-                colors = NavigationDrawerItemDefaults.colors(
-                    selectedContainerColor = Color.White,
-                    unselectedContainerColor = Color.Transparent,
-                    selectedTextColor = Color(0xFF092B5A),
-                    unselectedTextColor = Color.White,
-                    selectedIconColor = Color(0xFF092B5A),
-                    unselectedIconColor = Color.White
-                )
+                colors = navigationDrawerColors()
             )
             NavigationDrawerItem(
                 label = { Text("Transacciones") },
-                selected = false,
-                onClick = { /* TODO */ },
+                selected = currentScreen == AppScreen.Transactions,
+                onClick = { onMenuItemClick(AppScreen.Transactions) },
                 icon = { Icon(Icons.Default.SwapHoriz, contentDescription = "Transacciones") },
-                colors = NavigationDrawerItemDefaults.colors(
-                    selectedContainerColor = Color.White,
-                    unselectedContainerColor = Color.Transparent,
-                    selectedTextColor = Color(0xFF092B5A),
-                    unselectedTextColor = Color.White,
-                    selectedIconColor = Color(0xFF092B5A),
-                    unselectedIconColor = Color.White
-                )
+                colors = navigationDrawerColors()
             )
             NavigationDrawerItem(
                 label = { Text("Cuadre Mensual") },
-                selected = false,
-                onClick = { /* TODO */ },
+                selected = currentScreen == AppScreen.MonthlyBalancing,
+                onClick = { onMenuItemClick(AppScreen.MonthlyBalancing) },
                 icon = { Icon(Icons.Default.BarChart, contentDescription = "Cuadre Mensual") },
-                colors = NavigationDrawerItemDefaults.colors(
-                    selectedContainerColor = Color.White,
-                    unselectedContainerColor = Color.Transparent,
-                    selectedTextColor = Color(0xFF092B5A),
-                    unselectedTextColor = Color.White,
-                    selectedIconColor = Color(0xFF092B5A),
-                    unselectedIconColor = Color.White
-                )
+                colors = navigationDrawerColors()
             )
 
             Spacer(Modifier.weight(1f))
@@ -142,3 +124,13 @@ fun AppDrawer(
         }
     }
 }
+
+@Composable
+private fun navigationDrawerColors() = NavigationDrawerItemDefaults.colors(
+    selectedContainerColor = Color.White,
+    unselectedContainerColor = Color.Transparent,
+    selectedTextColor = Color(0xFF092B5A),
+    unselectedTextColor = Color.White,
+    selectedIconColor = Color(0xFF092B5A),
+    unselectedIconColor = Color.White
+)

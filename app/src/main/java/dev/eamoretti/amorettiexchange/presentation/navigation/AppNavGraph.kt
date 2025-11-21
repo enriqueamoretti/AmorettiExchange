@@ -44,4 +44,7 @@ fun AppNavGraph() {
 sealed class AppScreen(val route: String) {
     object Login : AppScreen("login")
     object Home : AppScreen("home")
+    object Clients : AppScreen("clients")
+    object Transactions : AppScreen("transactions")
+    object MonthlyBalancing : AppScreen("monthly_balancing")
 }
