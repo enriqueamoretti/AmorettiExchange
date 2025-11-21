@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.eamoretti.amorettiexchange.presentation.clients.Client
+import dev.eamoretti.amorettiexchange.presentation.clients.model.Client
 
 @Composable
 fun ClientListItem(client: Client) {

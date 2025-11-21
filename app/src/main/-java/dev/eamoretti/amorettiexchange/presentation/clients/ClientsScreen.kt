@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import dev.eamoretti.amorettiexchange.presentation.clients.components.ClientListItem
-import dev.eamoretti.amorettiexchange.presentation.clients.model.Client
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,7 +24,7 @@ fun ClientsScreen(
     var searchQuery by remember { mutableStateOf("") }
     val clients = listOf(
         Client("INVERSIONES Y NEGOCIOS CORPORATIVOS G.P.", "20611921701", "959224270"),
-        Client("INMOBILIARIA VALEISA SAC", "20510510449", "912567T088"),
+        Client("INMOBILIARIA VALEISA SAC", "20510510449", "912567088"),
         Client("BARRERA BENAVIDES JUANA MARIA LUISA", "08208278", "908708558"),
         Client("CARLOS ALEJANDRO CARRIONOL RAYGADA", "45371282", "989163077")
     )

@@ -1,10 +1,10 @@
 package dev.eamoretti.amorettiexchange.presentation.home
 
+import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
-import androidx.compose.runtime.*
-import androidx.compose.runtime.rememberCoroutineScope
 import dev.eamoretti.amorettiexchange.presentation.clients.ClientsScreen
 import dev.eamoretti.amorettiexchange.presentation.monthlybalancing.MonthlyBalancingScreen
 import dev.eamoretti.amorettiexchange.presentation.navigation.AppScreen
@@ -13,7 +13,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onNavigateToRegisterClient: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -39,20 +40,23 @@ fun HomeScreen(
             )
         }
     ) {
-        // The error was caused by a non-exhaustive `when` statement.
-        // The AppScreen sealed class has more states (Login, Home) than were being handled.
-        // This can confuse the Compose compiler. By making the `when` statement
-        // exhaustive, we handle all possible cases and resolve the error.
-        when (currentScreen) {
-            AppScreen.Clients -> ClientsScreen(onMenuClick = { scope.launch { drawerState.open() } })
-            AppScreen.Transactions -> TransactionsScreen(onMenuClick = { scope.launch { drawerState.open() } })
-            AppScreen.MonthlyBalancing -> MonthlyBalancingScreen(onMenuClick = { scope.launch { drawerState.open() } })
-            AppScreen.Login, AppScreen.Home -> {
-                // These states should not be reached while inside HomeScreen,
-                // but we handle them to make the `when` exhaustive.
-                // We'll default to showing the Clients screen as a fallback.
-                ClientsScreen(onMenuClick = { scope.launch { drawerState.open() } })
+        // Explicitly defining the lambda's type to () -> Unit resolves the type mismatch error.
+        // The compiler was getting confused by the `Job` return type of `scope.launch`.
+        val onMenuClick: () -> Unit = {
+            scope.launch { drawerState.open() }
+        }
+
+        // The `when` expression must be exhaustive. By handling all possible AppScreen states,
+        // we satisfy the compiler and create more robust code.
+        val screenContent: @Composable () -> Unit = when (currentScreen) {
+            AppScreen.Clients -> { { ClientsScreen(onMenuClick, onNavigateToRegisterClient) } }
+            AppScreen.Transactions -> { { TransactionsScreen(onMenuClick) } }
+            AppScreen.MonthlyBalancing -> { { MonthlyBalancingScreen(onMenuClick) } }
+            AppScreen.Login, AppScreen.Home, AppScreen.RegisterClient -> {
+                { ClientsScreen(onMenuClick, onNavigateToRegisterClient) }
             }
         }
+
+        screenContent()
     }
 }

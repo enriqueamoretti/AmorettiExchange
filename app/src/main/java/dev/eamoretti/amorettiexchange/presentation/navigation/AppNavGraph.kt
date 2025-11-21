@@ -5,6 +5,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dev.eamoretti.amorettiexchange.presentation.auth.LoginScreen
+import dev.eamoretti.amorettiexchange.presentation.clients.RegisterClientScreen
 import dev.eamoretti.amorettiexchange.presentation.home.HomeScreen
 
 @Composable
@@ -35,6 +36,16 @@ fun AppNavGraph() {
                     navController.navigate(AppScreen.Login.route) {
                         popUpTo(AppScreen.Home.route) { inclusive = true }
                     }
+                },
+                onNavigateToRegisterClient = {
+                    navController.navigate(AppScreen.RegisterClient.route)
+                }
+            )
+        }
+        composable(AppScreen.RegisterClient.route) {
+            RegisterClientScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
@@ -47,4 +58,5 @@ sealed class AppScreen(val route: String) {
     object Clients : AppScreen("clients")
     object Transactions : AppScreen("transactions")
     object MonthlyBalancing : AppScreen("monthly_balancing")
+    object RegisterClient : AppScreen("register_client")
 }
