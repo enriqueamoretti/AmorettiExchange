@@ -1,5 +1,7 @@
 package dev.eamoretti.amorettiexchange.presentation.clients
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -7,30 +9,32 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.eamoretti.amorettiexchange.presentation.clients.components.ClientListItem
-// Importa tu modelo Cliente del paquete data.model
-import dev.eamoretti.amorettiexchange.data.model.Cliente
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientsScreen(
     onMenuClick: () -> Unit,
     onNavigateToRegisterClient: () -> Unit,
-    // Inyectamos el ViewModel
     viewModel: ClientsViewModel = viewModel()
 ) {
-    // Observamos el estado del ViewModel
     val uiState by viewModel.uiState.collectAsState()
-
     var searchQuery by remember { mutableStateOf("") }
+
+    // Estado para la animación de rotación
+    val rotation = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -41,10 +45,31 @@ fun ClientsScreen(
                         Icon(Icons.Default.Menu, contentDescription = "Menú")
                     }
                 },
+                actions = {
+                    // BOTÓN REFRESH ANIMADO
+                    IconButton(onClick = {
+                        scope.launch {
+                            // Gira 360 grados en 1 segundo
+                            rotation.animateTo(
+                                targetValue = rotation.value + 360f,
+                                animationSpec = tween(durationMillis = 1000)
+                            )
+                        }
+                        viewModel.refresh()
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Actualizar",
+                            tint = Color.White,
+                            modifier = Modifier.rotate(rotation.value)
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFF092B5A),
                     titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 )
             )
         },
@@ -56,7 +81,7 @@ fun ClientsScreen(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Row(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Icon(Icons.Default.Add, contentDescription = "Registrar Cliente")
+                    Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("Registrar Cliente")
                 }
@@ -71,10 +96,10 @@ fun ClientsScreen(
                     .fillMaxWidth()
                     .padding(16.dp),
                 placeholder = { Text("Buscar cliente...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") }
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+                shape = RoundedCornerShape(12.dp)
             )
 
-            // Manejo de estados: Cargando, Error o Lista
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
                     uiState.isLoading -> {
@@ -88,7 +113,6 @@ fun ClientsScreen(
                         )
                     }
                     else -> {
-                        // Filtramos la lista que viene de Azure
                         val filteredClients = uiState.clients.filter {
                             it.razonSocial.contains(searchQuery, ignoreCase = true) ||
                                     (it.documento ?: "").contains(searchQuery)
@@ -99,7 +123,6 @@ fun ClientsScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(filteredClients) { cliente ->
-                                // ¡Miren qué limpio! Pasamos el objeto directo
                                 ClientListItem(client = cliente)
                             }
                         }

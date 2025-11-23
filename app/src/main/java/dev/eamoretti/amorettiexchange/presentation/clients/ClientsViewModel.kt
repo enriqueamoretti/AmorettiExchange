@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.eamoretti.amorettiexchange.data.model.Cliente
-import dev.eamoretti.amorettiexchange.data.repository.DataRepository // Importamos el Repo
+import dev.eamoretti.amorettiexchange.data.repository.DataRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,17 +23,24 @@ class ClientsViewModel : ViewModel() {
     val uiState: StateFlow<ClientsUiState> = _uiState.asStateFlow()
 
     init {
-        fetchClients()
+        // Al iniciar, usa caché (force = false)
+        fetchClients(force = false)
     }
 
-    fun fetchClients() {
+    // ESTA ES LA FUNCIÓN PARA EL BOTÓN REFRESH
+    fun refresh() {
+        // Limpiamos la memoria global para que Transacciones también se actualice luego
+        DataRepository.invalidarCacheGlobal()
+        fetchClients(force = true)
+    }
+
+    private fun fetchClients(force: Boolean) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
             try {
-                // CAMBIO CLAVE: Pedimos los datos al Repositorio, no a la API directa
-                // El repositorio decidirá si usa caché o internet
-                val listaClientes = DataRepository.obtenerClientes()
+                // Pasamos el parámetro 'force' al repositorio
+                val listaClientes = DataRepository.obtenerClientes(forzarRecarga = force)
 
                 _uiState.update {
                     it.copy(isLoading = false, clients = listaClientes)

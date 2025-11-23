@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.eamoretti.amorettiexchange.data.model.ResumenMensual
 import dev.eamoretti.amorettiexchange.data.model.Transaccion
-import dev.eamoretti.amorettiexchange.data.repository.DataRepository // Usamos el Repo inteligente
+import dev.eamoretti.amorettiexchange.data.repository.DataRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +16,7 @@ data class MonthlyUiState(
     val isLoading: Boolean = false,
     val years: List<Int> = listOf(Calendar.getInstance().get(Calendar.YEAR)),
     val selectedYear: Int = Calendar.getInstance().get(Calendar.YEAR),
-    val selectedMonthIndex: Int = Calendar.getInstance().get(Calendar.MONTH), // 0=Enero
+    val selectedMonthIndex: Int = Calendar.getInstance().get(Calendar.MONTH),
 
     val summary: ResumenMensual? = null,
     val purchaseMovements: List<Transaccion> = emptyList(),
@@ -30,33 +30,38 @@ class MonthlyBalancingViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(MonthlyUiState())
     val uiState: StateFlow<MonthlyUiState> = _uiState.asStateFlow()
 
-    // Aquí guardaremos TODO el historial para no volver a pedirlo
     private var allTransactions: List<Transaccion> = emptyList()
 
     init {
-        loadData()
+        loadData(force = false)
     }
 
-    private fun loadData() {
+    // ESTA ES LA FUNCIÓN PARA EL BOTÓN REFRESH
+    fun refresh() {
+        DataRepository.invalidarCacheGlobal()
+        loadData(force = true)
+    }
+
+    private fun loadData(force: Boolean) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                // 1. Pedir TODAS las transacciones al Repositorio (Usa Caché si ya existen)
-                // Esto consume API solo la primera vez que abres la app
-                allTransactions = DataRepository.obtenerTransacciones()
+                // Pasamos el parámetro 'force' al repositorio
+                allTransactions = DataRepository.obtenerTransacciones(forzarRecarga = force)
 
-                // 2. Calcular qué años tienen datos (Lógica local)
+                // Recalcular años disponibles
                 val availableYears = allTransactions
-                    .map { it.fecha.take(4).toInt() } // Extraer "2025" de "2025-11-..."
+                    .map { it.fecha.take(4).toInt() }
                     .distinct()
                     .sortedDescending()
 
-                // Actualizar años si encontramos datos
                 if (availableYears.isNotEmpty()) {
-                    _uiState.update { it.copy(years = availableYears, selectedYear = availableYears.first()) }
+                    val currentYear = _uiState.value.selectedYear
+                    val newYear = if (availableYears.contains(currentYear)) currentYear else availableYears.first()
+
+                    _uiState.update { it.copy(years = availableYears, selectedYear = newYear) }
                 }
 
-                // 3. Calcular el reporte inicial
                 calculateLocalReport()
 
             } catch (e: Exception) {
@@ -67,44 +72,36 @@ class MonthlyBalancingViewModel : ViewModel() {
 
     fun onYearSelected(year: Int) {
         _uiState.update { it.copy(selectedYear = year) }
-        calculateLocalReport() // Cálculo instantáneo en RAM
+        calculateLocalReport()
     }
 
     fun onMonthSelected(monthIndex: Int) {
         _uiState.update { it.copy(selectedMonthIndex = monthIndex) }
-        calculateLocalReport() // Cálculo instantáneo en RAM
+        calculateLocalReport()
     }
 
-    // ESTA ES LA MAGIA: Filtra y suma en tu celular (Costo $0)
     private fun calculateLocalReport() {
         val year = _uiState.value.selectedYear
-        val month = _uiState.value.selectedMonthIndex + 1 // Ajuste 0-11 a 1-12
+        val month = _uiState.value.selectedMonthIndex + 1
 
-        // 1. Filtrar lista maestra
         val filtered = allTransactions.filter { t ->
             val tYear = t.fecha.take(4).toInt()
             val tMonth = t.fecha.substring(5, 7).toInt()
             tYear == year && tMonth == month
         }
 
-        // 2. Separar Compras y Ventas
         val purchases = filtered.filter { it.tipoMovimiento.equals("Compra", true) }
         val sales = filtered.filter { it.tipoMovimiento.equals("Venta", true) }
 
-        // 3. Calcular Totales Matemáticamente
         val totalCompraUSD = purchases.sumOf { it.montoDivisa }
         val totalCompraSoles = purchases.sumOf { it.montoSoles }
         val totalVentaUSD = sales.sumOf { it.montoDivisa }
         val totalVentaSoles = sales.sumOf { it.montoSoles }
         val utilidad = totalVentaSoles - totalCompraSoles
 
-        // Calcular Tasa Promedio (Evitar división por cero)
-        // Una fórmula simple: Total Soles Movidos / Total Dólares Movidos (o promedio simple de tasas)
-        // Usaremos promedio simple de las tasas registradas en el mes
-        val tasas = filtered.map { it.montoSoles / it.montoDivisa } // Calculamos tasa implícita de cada op
+        val tasas = filtered.map { it.montoSoles / it.montoDivisa }
         val tasaPromedio = if (tasas.isNotEmpty()) tasas.average() else 0.0
 
-        // 4. Crear objeto Resumen
         val resumen = ResumenMensual(
             totalCompraUSD = totalCompraUSD,
             totalCompraSoles = totalCompraSoles,
@@ -114,7 +111,6 @@ class MonthlyBalancingViewModel : ViewModel() {
             tasaPromedio = tasaPromedio
         )
 
-        // 5. Actualizar UI (Instantáneo)
         _uiState.update {
             it.copy(
                 isLoading = false,
