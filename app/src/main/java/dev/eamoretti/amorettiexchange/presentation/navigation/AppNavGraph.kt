@@ -8,9 +8,6 @@ import dev.eamoretti.amorettiexchange.presentation.auth.LoginScreen
 import dev.eamoretti.amorettiexchange.presentation.clients.RegisterClientScreen
 import dev.eamoretti.amorettiexchange.presentation.home.HomeScreen
 import dev.eamoretti.amorettiexchange.presentation.transactions.RegisterTransactionScreen
-import dev.eamoretti.amorettiexchange.presentation.clients.ClientsScreen
-import dev.eamoretti.amorettiexchange.presentation.transactions.TransactionsScreen
-import dev.eamoretti.amorettiexchange.presentation.monthlybalancing.MonthlyBalancingScreen
 
 @Composable
 fun AppNavGraph() {
@@ -25,8 +22,12 @@ fun AppNavGraph() {
         // PANTALLA DE LOGIN
         composable(AppScreen.Login.route) {
             LoginScreen(
-                onAdminLogin = { navController.navigate(AppScreen.Home.route) { popUpTo(AppScreen.Login.route) { inclusive = true } } },
-                onEmployeeLogin = { navController.navigate(AppScreen.Home.route) { popUpTo(AppScreen.Login.route) { inclusive = true } } }
+                onLoginSuccess = {
+                    // Navegar al Home y borrar el Login del historial (back stack)
+                    navController.navigate(AppScreen.Home.route) {
+                        popUpTo(AppScreen.Login.route) { inclusive = true }
+                    }
+                }
             )
         }
 
@@ -57,11 +58,10 @@ fun AppNavGraph() {
             )
         }
 
-        // PANTALLA DE REGISTRO DE TRANSACCIÓN (CORREGIDO)
+        // PANTALLA DE REGISTRO DE TRANSACCIÓN
         composable(AppScreen.RegisterTransaction.route) {
             RegisterTransactionScreen(
                 onNavigateBack = { navController.popBackStack() }
-                // YA NO PASAMOS 'clients' AQUÍ. El ViewModel se encarga.
             )
         }
     }
@@ -71,12 +71,12 @@ sealed class AppScreen(val route: String) {
     object Login : AppScreen("login")
     object Home : AppScreen("home")
 
-    // Sub-pantallas del Home (usadas para controlar qué mostrar en el Scaffold del Home)
+    // Sub-pantallas del Home
     object Clients : AppScreen("clients")
     object Transactions : AppScreen("transactions")
     object MonthlyBalancing : AppScreen("monthly_balancing")
 
-    // Pantallas independientes (fuera del Home)
+    // Pantallas independientes
     object RegisterClient : AppScreen("register_client")
     object RegisterTransaction : AppScreen("register_transaction")
 }

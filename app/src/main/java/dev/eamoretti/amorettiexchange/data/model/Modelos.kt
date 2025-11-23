@@ -10,14 +10,11 @@ data class Cliente(
     @SerializedName("Direccion") val direccion: String?
 )
 
-// Aquí puedes agregar Transaccion y ResumenMensual luego
-
-// AGREGAR ESTO: Modelo para las transacciones
 data class Transaccion(
     @SerializedName("IdTransaccion") val id: Long,
     @SerializedName("NombreCliente") val nombreCliente: String,
-    @SerializedName("FechaOperacion") val fecha: String, // Viene como "2025-11-17T00:00:00"
-    @SerializedName("TipoMovimiento") val tipoMovimiento: String, // "Compra" o "Venta"
+    @SerializedName("FechaOperacion") val fecha: String,
+    @SerializedName("TipoMovimiento") val tipoMovimiento: String,
     @SerializedName("MonedaSimbolo") val moneda: String,
     @SerializedName("MontoDivisa") val montoDivisa: Double,
     @SerializedName("MontoLocal") val montoSoles: Double,
@@ -25,7 +22,6 @@ data class Transaccion(
     @SerializedName("Estado") val estado: String
 )
 
-// Nuevo modelo para el Resumen (Tarjetas de colores)
 data class ResumenMensual(
     @SerializedName("TotalCompraUSD") val totalCompraUSD: Double,
     @SerializedName("TotalCompraSoles") val totalCompraSoles: Double,
@@ -35,7 +31,13 @@ data class ResumenMensual(
     @SerializedName("TasaPromedio") val tasaPromedio: Double
 )
 
-// Nuevo modelo para la lista de Años disponibles
 data class AnioDisponible(
     @SerializedName("Anio") val anio: Int
+)
+
+// NUEVO: Modelo de Usuario
+data class Usuario(
+    @SerializedName("IdUsuario") val id: Int,
+    @SerializedName("NombreCompleto") val nombreCompleto: String,
+    @SerializedName("Email") val email: String
 )
