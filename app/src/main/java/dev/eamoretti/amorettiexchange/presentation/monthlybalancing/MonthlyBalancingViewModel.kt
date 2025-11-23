@@ -1,5 +1,6 @@
 package dev.eamoretti.amorettiexchange.presentation.monthlybalancing
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.eamoretti.amorettiexchange.data.model.ResumenMensual
@@ -36,7 +37,6 @@ class MonthlyBalancingViewModel : ViewModel() {
         loadData(force = false)
     }
 
-    // ESTA ES LA FUNCIÓN PARA EL BOTÓN REFRESH
     fun refresh() {
         DataRepository.invalidarCacheGlobal()
         loadData(force = true)
@@ -46,25 +46,27 @@ class MonthlyBalancingViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
-                // Pasamos el parámetro 'force' al repositorio
+                // 1. Descargar datos
                 allTransactions = DataRepository.obtenerTransacciones(forzarRecarga = force)
+                Log.d("MonthlyVM", "Total transacciones descargadas: ${allTransactions.size}")
 
-                // Recalcular años disponibles
+                // 2. Calcular años disponibles (Parseo seguro)
                 val availableYears = allTransactions
-                    .map { it.fecha.take(4).toInt() }
+                    .mapNotNull { parseYear(it.fecha) }
                     .distinct()
                     .sortedDescending()
 
                 if (availableYears.isNotEmpty()) {
                     val currentYear = _uiState.value.selectedYear
                     val newYear = if (availableYears.contains(currentYear)) currentYear else availableYears.first()
-
                     _uiState.update { it.copy(years = availableYears, selectedYear = newYear) }
                 }
 
+                // 3. Calcular reporte
                 calculateLocalReport()
 
             } catch (e: Exception) {
+                Log.e("MonthlyVM", "Error cargando datos", e)
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
             }
         }
@@ -81,25 +83,40 @@ class MonthlyBalancingViewModel : ViewModel() {
     }
 
     private fun calculateLocalReport() {
-        val year = _uiState.value.selectedYear
-        val month = _uiState.value.selectedMonthIndex + 1
+        val selectedYear = _uiState.value.selectedYear
+        val selectedMonth = _uiState.value.selectedMonthIndex + 1 // 1..12
 
+        // 1. FILTRADO ROBUSTO
         val filtered = allTransactions.filter { t ->
-            val tYear = t.fecha.take(4).toInt()
-            val tMonth = t.fecha.substring(5, 7).toInt()
-            tYear == year && tMonth == month
+            val dateParts = parseDateParts(t.fecha)
+            if (dateParts != null) {
+                val (tYear, tMonth) = dateParts
+                tYear == selectedYear && tMonth == selectedMonth
+            } else {
+                false // Fecha inválida, ignorar
+            }
         }
 
-        val purchases = filtered.filter { it.tipoMovimiento.equals("Compra", true) }
-        val sales = filtered.filter { it.tipoMovimiento.equals("Venta", true) }
+        Log.d("MonthlyVM", "Transacciones del mes ($selectedMonth/$selectedYear): ${filtered.size}")
 
+        // 2. Separar por Tipo (Solo Completadas para el cuadre de caja real)
+        // Si quieres incluir pendientes, quita la condición de estado.
+        val activeTransactions = filtered.filter { it.estado == "Completada" }
+
+        val purchases = activeTransactions.filter { it.tipoMovimiento.equals("Compra", true) }
+        val sales = activeTransactions.filter { it.tipoMovimiento.equals("Venta", true) }
+
+        // 3. Calcular Totales
         val totalCompraUSD = purchases.sumOf { it.montoDivisa }
         val totalCompraSoles = purchases.sumOf { it.montoSoles }
         val totalVentaUSD = sales.sumOf { it.montoDivisa }
         val totalVentaSoles = sales.sumOf { it.montoSoles }
+
+        // Utilidad: (Ventas Soles - Compras Soles) -> Flujo de caja simple
         val utilidad = totalVentaSoles - totalCompraSoles
 
-        val tasas = filtered.map { it.montoSoles / it.montoDivisa }
+        // Tasa Promedio
+        val tasas = activeTransactions.map { if (it.montoDivisa != 0.0) it.montoSoles / it.montoDivisa else 0.0 }
         val tasaPromedio = if (tasas.isNotEmpty()) tasas.average() else 0.0
 
         val resumen = ResumenMensual(
@@ -119,5 +136,27 @@ class MonthlyBalancingViewModel : ViewModel() {
                 saleMovements = sales
             )
         }
+    }
+
+    // --- Helpers de Parseo Seguro ---
+
+    // Extrae [Año, Mes] de "2025-11-21T10:00:00" o "2025-11-21"
+    private fun parseDateParts(dateString: String): Pair<Int, Int>? {
+        return try {
+            // Nos quedamos solo con la parte de la fecha (antes de la T si existe)
+            val cleanDate = dateString.split("T")[0]
+            val parts = cleanDate.split("-")
+            if (parts.size >= 2) {
+                val year = parts[0].toInt()
+                val month = parts[1].toInt()
+                Pair(year, month)
+            } else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun parseYear(dateString: String): Int? {
+        return parseDateParts(dateString)?.first
     }
 }

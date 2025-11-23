@@ -17,124 +17,286 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.eamoretti.amorettiexchange.presentation.clients.model.Client
-import java.text.DecimalFormat
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterTransactionScreen(
     onNavigateBack: () -> Unit,
-    clients: List<Client>
+    // Eliminamos la lista 'clients' por parámetro, el ViewModel se encarga
+    viewModel: RegisterTransactionViewModel = viewModel()
 ) {
-    var selectedClient by remember { mutableStateOf<Client?>(null) }
-    var date by remember { mutableStateOf("21/11/2025") }
-    var movement by remember { mutableStateOf("Compra") }
-    var currency by remember { mutableStateOf("Dólares") }
-    var amount by remember { mutableStateOf("") }
-    var exchangeRate by remember { mutableStateOf("3.375") }
-    var paymentType by remember { mutableStateOf("Efectivo") }
-    var totalInSoles by remember { mutableStateOf("S/ 0.00") }
-    var detail by remember { mutableStateOf("") }
-    var status by remember { mutableStateOf("Completada") }
-    var isClientDropdownExpanded by remember { mutableStateOf(false) }
+    // Manejo del Dropdown de Clientes
+    var expandedClient by remember { mutableStateOf(false) }
+    var clientSearchText by remember { mutableStateOf("") }
 
-    LaunchedEffect(amount, exchangeRate, currency) {
-        val amountValue = amount.toDoubleOrNull() ?: 0.0
-        val exchangeRateValue = exchangeRate.toDoubleOrNull() ?: 0.0
-        val total = if (currency == "Dólares") amountValue * exchangeRateValue else amountValue
-        totalInSoles = "S/ ${DecimalFormat("#,##0.00").format(total)}"
+    // Efecto de éxito
+    LaunchedEffect(viewModel.isSuccess) {
+        if (viewModel.isSuccess) {
+            onNavigateBack()
+            viewModel.resetState()
+        }
+    }
+
+    // Recalcular total cuando cambian valores
+    LaunchedEffect(viewModel.amount, viewModel.exchangeRate) {
+        viewModel.calculateTotal()
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Registrar Transacción") },
-                // This onClick MUST call onNavigateBack to return to the previous screen (Transactions)
-                navigationIcon = { IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Atrás") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF092B5A), titleContentColor = Color.White, navigationIconContentColor = Color.White)
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Atrás")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF092B5A),
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
             )
         }
     ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues).padding(16.dp).verticalScroll(rememberScrollState())) {
-            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(2.dp)
+            ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // All form fields remain the same
-                    ExposedDropdownMenuBox(expanded = isClientDropdownExpanded, onExpandedChange = { isClientDropdownExpanded = !isClientDropdownExpanded }) {
+
+                    // Mensaje de Error
+                    if (viewModel.errorMessage != null) {
+                        Text(viewModel.errorMessage!!, color = MaterialTheme.colorScheme.error)
+                    }
+
+                    // --- 1. SELECTOR DE CLIENTE CON BUSCADOR ---
+                    ExposedDropdownMenuBox(
+                        expanded = expandedClient,
+                        onExpandedChange = { expandedClient = !expandedClient }
+                    ) {
                         OutlinedTextField(
-                            value = selectedClient?.name ?: "Seleccione un cliente",
-                            onValueChange = {},
-                            readOnly = true,
+                            value = if (viewModel.selectedClient == null) clientSearchText else viewModel.selectedClient!!.razonSocial,
+                            onValueChange = {
+                                clientSearchText = it
+                                viewModel.selectedClient = null // Resetear si escribe
+                                viewModel.filterClients(it)
+                                expandedClient = true
+                            },
+                            label = { Text("Seleccione un cliente") },
+                            leadingIcon = { Icon(Icons.Default.Person, null) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedClient) },
                             modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isClientDropdownExpanded) }
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF092B5A),
+                                cursorColor = Color(0xFF092B5A)
+                            )
                         )
-                        ExposedDropdownMenu(expanded = isClientDropdownExpanded, onDismissRequest = { isClientDropdownExpanded = false }) {
-                            clients.forEach { client ->
-                                DropdownMenuItem(text = { Text(client.name) }, onClick = { selectedClient = client; isClientDropdownExpanded = false })
+
+                        if (viewModel.filteredClients.isNotEmpty()) {
+                            ExposedDropdownMenu(
+                                expanded = expandedClient,
+                                onDismissRequest = { expandedClient = false }
+                            ) {
+                                viewModel.filteredClients.forEach { client ->
+                                    DropdownMenuItem(
+                                        text = { Text(client.razonSocial) },
+                                        onClick = {
+                                            viewModel.selectedClient = client
+                                            clientSearchText = client.razonSocial
+                                            expandedClient = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
-                    FormField(label = "Fecha *", value = date, onValueChange = { date = it }, placeholder = "DD/MM/YYYY", leadingIcon = Icons.Default.DateRange)
-                    SelectionGroup(label = "Movimiento *", options = listOf("Compra", "Venta"), selectedOption = movement, onOptionSelect = { movement = it })
-                    SelectionGroup(label = "Moneda *", options = listOf("Dólares", "Soles"), selectedOption = currency, onOptionSelect = { currency = it })
-                    FormField(label = "Monto *", value = amount, onValueChange = { amount = it }, placeholder = "0.00", leadingIcon = Icons.Default.AttachMoney, keyboardType = KeyboardType.Decimal)
-                    if (currency == "Dólares") {
-                        FormField(label = "Tipo de Cambio *", value = exchangeRate, onValueChange = { exchangeRate = it }, placeholder = "3.375", leadingIcon = Icons.Default.CompareArrows, keyboardType = KeyboardType.Decimal)
-                    }
-                    SelectionGroup(label = "Tipo de Pago *", options = listOf("Efectivo", "Transferencia", "Otro"), selectedOption = paymentType, onOptionSelect = { paymentType = it })
-                    Box(modifier = Modifier.fillMaxWidth().background(Color(0xFFE8F5E9), RoundedCornerShape(8.dp)).padding(16.dp)) {
+
+                    // Fecha
+                    FormField(
+                        label = "Fecha *",
+                        value = viewModel.date,
+                        onValueChange = { viewModel.date = it },
+                        placeholder = "YYYY-MM-DD",
+                        leadingIcon = Icons.Default.DateRange
+                    )
+
+                    // Movimiento
+                    SelectionGroup(
+                        label = "Movimiento *",
+                        options = listOf("Compra", "Venta"),
+                        selectedOption = viewModel.movementType,
+                        onOptionSelect = { viewModel.movementType = it }
+                    )
+
+                    // Moneda (¡Ahora con Euros!)
+                    SelectionGroup(
+                        label = "Moneda *",
+                        options = listOf("Dólares", "Soles", "Euros"),
+                        selectedOption = viewModel.currency,
+                        onOptionSelect = { viewModel.currency = it }
+                    )
+
+                    // Monto
+                    FormField(
+                        label = "Monto *",
+                        value = viewModel.amount,
+                        onValueChange = { viewModel.amount = it },
+                        placeholder = "0.00",
+                        leadingIcon = Icons.Default.AttachMoney,
+                        keyboardType = KeyboardType.Decimal
+                    )
+
+                    // Tipo de Cambio
+                    FormField(
+                        label = "Tipo de Cambio *",
+                        value = viewModel.exchangeRate,
+                        onValueChange = { viewModel.exchangeRate = it },
+                        placeholder = "3.375",
+                        leadingIcon = Icons.Default.CompareArrows,
+                        keyboardType = KeyboardType.Decimal
+                    )
+
+                    // Tipo de Pago
+                    SelectionGroup(
+                        label = "Tipo de Pago *",
+                        options = listOf("Efectivo", "Transferencia", "Yape/Plin"),
+                        selectedOption = viewModel.paymentType,
+                        onOptionSelect = { viewModel.paymentType = it }
+                    )
+
+                    // Total Calculado (Tarjeta Verde)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFE8F5E9), RoundedCornerShape(8.dp))
+                            .padding(16.dp)
+                    ) {
                         Column {
-                            Text("Total en Soles", color = Color.Gray, fontSize = 14.sp)
-                            Text(totalInSoles, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF2E7D32))
+                            Text("Total Calculado (Soles)", color = Color.Gray, fontSize = 14.sp)
+                            Text(
+                                text = viewModel.totalInSoles,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp,
+                                color = Color(0xFF2E7D32)
+                            )
                         }
                     }
-                    OutlinedTextField(value = detail, onValueChange = { detail = it }, modifier = Modifier.fillMaxWidth().height(100.dp), label = { Text("Detalle") }, placeholder = { Text("Información adicional (opcional)")})
-                    SelectionGroup(label = "Estado *", options = listOf("Completada", "Pendiente", "Cancelada"), selectedOption = status, onOptionSelect = { status = it })
+
+                    // Detalle
+                    OutlinedTextField(
+                        value = viewModel.detail,
+                        onValueChange = { viewModel.detail = it },
+                        modifier = Modifier.fillMaxWidth().height(80.dp),
+                        label = { Text("Detalle") },
+                        placeholder = { Text("Notas opcionales") },
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFF092B5A))
+                    )
+
+                    // Estado
+                    SelectionGroup(
+                        label = "Estado *",
+                        options = listOf("Completada", "Pendiente", "Anulada"),
+                        selectedOption = viewModel.status,
+                        onOptionSelect = { viewModel.status = it }
+                    )
                 }
             }
+
             Spacer(Modifier.height(24.dp))
-            Button(onClick = { /* TODO: Validation */ onNavigateBack() }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF092B5A))) {
-                Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                Text("Registrar Transacción")
+
+            // Botón Guardar
+            Button(
+                onClick = { viewModel.saveTransaction() },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF092B5A)),
+                enabled = !viewModel.isLoading
+            ) {
+                if (viewModel.isLoading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Guardando...")
+                } else {
+                    Icon(Icons.Default.Save, null, modifier = Modifier.padding(end = 8.dp))
+                    Text("Registrar Transacción")
+                }
             }
+
             Spacer(Modifier.height(8.dp))
-            // This onClick MUST call onNavigateBack to return to the previous screen (Transactions)
-            OutlinedButton(onClick = onNavigateBack, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(12.dp)) {
+
+            OutlinedButton(
+                onClick = onNavigateBack,
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
                 Text("Cancelar")
             }
         }
     }
 }
 
-// Helper composables (SelectionGroup, FormField) remain the same
+// --- Componentes Auxiliares ---
+
 @Composable
 fun SelectionGroup(label: String, options: List<String>, selectedOption: String, onOptionSelect: (String) -> Unit) {
     Column {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
+        // Usamos FlowRow si hay muchas opciones o ScrollableRow
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             options.forEach { option ->
                 val isSelected = selectedOption == option
-                Button(onClick = { onOptionSelect(option) }, shape = RoundedCornerShape(50), colors = ButtonDefaults.buttonColors(containerColor = if (isSelected) Color(0xFF092B5A) else Color.LightGray, contentColor = if (isSelected) Color.White else Color.Black)) {
-                    Text(option)
-                }
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { onOptionSelect(option) },
+                    label = { Text(option) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF092B5A),
+                        selectedLabelColor = Color.White,
+                        containerColor = Color(0xFFF3F4F6),
+                        labelColor = Color.Black
+                    ),
+                    border = null,
+                    shape = RoundedCornerShape(50)
+                )
             }
         }
     }
 }
 
 @Composable
-fun FormField(label: String, value: String, onValueChange: (String) -> Unit, placeholder: String, leadingIcon: ImageVector, keyboardType: KeyboardType = KeyboardType.Text) {
+fun FormField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    leadingIcon: ImageVector,
+    keyboardType: KeyboardType = KeyboardType.Text
+) {
     Column {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text(placeholder) },
-            leadingIcon = { Icon(leadingIcon, contentDescription = null) },
+            leadingIcon = { Icon(leadingIcon, contentDescription = null, tint = Color(0xFF092B5A)) },
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            singleLine = true
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF092B5A),
+                cursorColor = Color(0xFF092B5A)
+            ),
+            shape = RoundedCornerShape(12.dp)
         )
     }
 }

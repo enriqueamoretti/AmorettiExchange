@@ -9,32 +9,27 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterClientScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    // Inyectamos el nuevo ViewModel
+    viewModel: RegisterClientViewModel = viewModel()
 ) {
-    var name by remember { mutableStateOf("") }
-    var ruc by remember { mutableStateOf("") }
-    var mainPhone by remember { mutableStateOf("") }
-    var auxPhone by remember { mutableStateOf("") }
-    var accountNumber by remember { mutableStateOf("") }
-    var address by remember { mutableStateOf("") }
-
-    var isNameError by remember { mutableStateOf(false) }
-    var isPhoneError by remember { mutableStateOf(false) }
-
-    fun validate(): Boolean {
-        isNameError = name.isBlank()
-        // Only validate phone if it's not blank
-        isPhoneError = mainPhone.isNotBlank() && mainPhone.length != 9
-        return !isNameError && !isPhoneError
+    // Efecto para navegar atrás si se guardó con éxito
+    LaunchedEffect(viewModel.isSuccess) {
+        if (viewModel.isSuccess) {
+            onNavigateBack()
+            viewModel.resetState()
+        }
     }
 
     Scaffold(
@@ -54,95 +49,131 @@ fun RegisterClientScreen(
             )
         }
     ) { paddingValues ->
+        // Contenedor principal con Scroll
         Column(
             modifier = Modifier
                 .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
+
+            // --- FORMULARIO ---
             Card(
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(2.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // Name Field
+
+                    // Mensaje de Error General (si falla la API)
+                    if (viewModel.errorMessage != null) {
+                        Text(
+                            text = viewModel.errorMessage!!,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+
+                    // Nombre (Obligatorio)
                     FormField(
                         label = "Nombre / Razón Social *",
-                        value = name,
-                        onValueChange = { name = it; isNameError = false },
+                        value = viewModel.name,
+                        onValueChange = {
+                            viewModel.name = it
+                            viewModel.isNameError = false
+                        },
                         placeholder = "Ingrese el nombre o razón social",
                         leadingIcon = Icons.Default.Business,
-                        isError = isNameError,
+                        isError = viewModel.isNameError,
                         errorMessage = "Este campo es obligatorio"
                     )
-                    // RUC/DNI Field
+
+                    // RUC/DNI
                     FormField(
                         label = "RUC / DNI",
-                        value = ruc,
-                        onValueChange = { ruc = it.filter { c -> c.isDigit() } },
+                        value = viewModel.ruc,
+                        onValueChange = { viewModel.ruc = it.filter { c -> c.isDigit() } },
                         placeholder = "Solo números",
                         leadingIcon = Icons.Default.CreditCard,
                         keyboardType = KeyboardType.Number
                     )
-                    // Main Phone Field
+
+                    // Teléfono Principal
                     FormField(
                         label = "Teléfono Principal",
-                        value = mainPhone,
-                        onValueChange = { mainPhone = it.filter { c -> c.isDigit() }.take(9); isPhoneError = false },
+                        value = viewModel.mainPhone,
+                        onValueChange = {
+                            viewModel.mainPhone = it.filter { c -> c.isDigit() }.take(9)
+                            viewModel.isPhoneError = false
+                        },
                         placeholder = "999999999",
                         leadingIcon = Icons.Default.Phone,
                         keyboardType = KeyboardType.Number,
-                        isError = isPhoneError,
+                        isError = viewModel.isPhoneError,
                         errorMessage = "Debe tener 9 dígitos"
                     )
-                    // Auxiliary Phone Field
+
+                    // Teléfono Auxiliar
                     FormField(
                         label = "Teléfono Auxiliar",
-                        value = auxPhone,
-                        onValueChange = { auxPhone = it.filter { c -> c.isDigit() }.take(9) },
+                        value = viewModel.auxPhone,
+                        onValueChange = { viewModel.auxPhone = it.filter { c -> c.isDigit() }.take(9) },
                         placeholder = "999999999 (opcional)",
                         leadingIcon = Icons.Default.Phone,
                         keyboardType = KeyboardType.Number
                     )
-                    // Account Number Field
+
+                    // Número de Cuenta
                     FormField(
                         label = "Número de Cuenta",
-                        value = accountNumber,
-                        onValueChange = { accountNumber = it.filter { c -> c.isDigit() } },
+                        value = viewModel.accountNumber,
+                        onValueChange = { viewModel.accountNumber = it.filter { c -> c.isDigit() } },
                         placeholder = "Número de cuenta (opcional)",
                         leadingIcon = Icons.Default.ConfirmationNumber,
                         keyboardType = KeyboardType.Number
                     )
-                    // Address Field
+
+                    // Dirección
                     FormField(
                         label = "Dirección",
-                        value = address,
-                        onValueChange = { address = it },
+                        value = viewModel.address,
+                        onValueChange = { viewModel.address = it },
                         placeholder = "Dirección completa (opcional)",
                         isTextArea = true
                     )
                 }
             }
-            
-            Spacer(Modifier.height(16.dp))
 
+            Spacer(Modifier.height(24.dp))
+
+            // --- BOTONES DE ACCIÓN ---
             Column {
                 Button(
-                    onClick = { if (validate()) { onNavigateBack() } },
+                    onClick = { viewModel.validateAndSave() },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF092B5A))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF092B5A)),
+                    enabled = !viewModel.isLoading // Deshabilitar si está cargando
                 ) {
-                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                    Text("Guardar Cliente")
+                    if (viewModel.isLoading) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Guardando...")
+                    } else {
+                        Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                        Text("Guardar Cliente")
+                    }
                 }
+
                 Spacer(Modifier.height(8.dp))
+
                 OutlinedButton(
                     onClick = onNavigateBack,
                     modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !viewModel.isLoading
                 ) {
                     Text("Cancelar")
                 }
@@ -168,12 +199,18 @@ fun FormField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth().then(if (isTextArea) Modifier.height(120.dp) else Modifier),
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (isTextArea) Modifier.height(120.dp) else Modifier),
             placeholder = { Text(placeholder) },
             leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             isError = isError,
-            singleLine = !isTextArea
+            singleLine = !isTextArea,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF092B5A),
+                cursorColor = Color(0xFF092B5A)
+            )
         )
         if (isError) {
             Text(errorMessage, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 16.dp))
