@@ -1,26 +1,44 @@
 package dev.eamoretti.amorettiexchange.data.network
 
-import com.google.gson.annotations.SerializedName
+import dev.eamoretti.amorettiexchange.data.model.*
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
-// Ya no necesitamos importar @Query porque no enviaremos la llave
+import retrofit2.http.Query
 
-data class ApiRequest(
-    @SerializedName("operation") val operation: String,
-    @SerializedName("payload") val payload: Map<String, Any?>
-)
-
-data class ApiResponse<T>(
-    @SerializedName("success") val success: Boolean,
-    @SerializedName("data") val data: T,
-    @SerializedName("error") val error: String?
-)
+// Clase simple para enviar usuario/pass
+data class LoginRequest(val email: String, val password: String)
 
 interface CambistaService {
-    // Endpoint limpio: Ya no pide 'functionKey'
-    @POST("api/GestionarOperaciones")
-    suspend fun ejecutarOperacion(
-        @Body request: ApiRequest
-    ): Response<ApiResponse<Any>>
+
+    // 1. LOGIN
+    @POST("api/auth/login")
+    suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
+
+    // 2. CLIENTES
+    @GET("api/clients")
+    suspend fun obtenerClientes(@Query("search") search: String = ""): Response<ApiResponse<List<Cliente>>>
+
+    @POST("api/clients")
+    suspend fun guardarCliente(@Body cliente: ClienteRequest): Response<PostResponse>
+
+    // 3. TRANSACCIONES
+    @GET("api/transactions")
+    suspend fun obtenerTransacciones(
+        @Query("search") search: String = "",
+        @Query("type") type: Int? = null,
+        @Query("year") year: Int? = null,
+        @Query("month") month: Int? = null
+    ): Response<ApiResponse<List<Transaccion>>>
+
+    @POST("api/transactions")
+    suspend fun guardarTransaccion(@Body transaccion: TransaccionRequest): Response<PostResponse>
+
+    // 4. DASHBOARD
+    @GET("api/dashboard")
+    suspend fun obtenerDashboard(
+        @Query("year") year: Int,
+        @Query("month") month: Int
+    ): Response<ApiResponse<ResumenMensual>>
 }
