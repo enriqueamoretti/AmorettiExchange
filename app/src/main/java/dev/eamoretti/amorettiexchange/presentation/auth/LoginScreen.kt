@@ -17,28 +17,29 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
-fun LoginScreen(onEmployeeLogin: () -> Unit, onAdminLogin: () -> Unit) {
-    var email by remember { mutableStateOf("") }
-    var pass by remember { mutableStateOf("") }
+fun LoginScreen(
+    onLoginSuccess: () -> Unit,
+    viewModel: LoginViewModel = viewModel()
+) {
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
 
-    val loginAction = {
-        if (email == "amoretti.lynch@gmail.com" && pass == "Luna211096") {
-            onAdminLogin()
-        } else {
-            onEmployeeLogin()
+    // Efecto para navegar si el login es exitoso
+    LaunchedEffect(viewModel.isLoggedIn) {
+        if (viewModel.isLoggedIn) {
+            onLoginSuccess()
         }
     }
 
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-
         // ------- HEADER SUPERIOR --------
         Box(
             modifier = Modifier
@@ -77,24 +78,25 @@ fun LoginScreen(onEmployeeLogin: () -> Unit, onAdminLogin: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            Text(
-                "Bienvenido",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                "Accede a tu historial de transacciones",
-                fontSize = 14.sp,
-                color = Color.Gray
-            )
+            Text("Bienvenido", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text("Accede a tu historial de transacciones", fontSize = 14.sp, color = Color.Gray)
 
             Spacer(Modifier.height(24.dp))
 
+            // Mensaje de Error
+            if (viewModel.loginError != null) {
+                Text(
+                    text = viewModel.loginError!!,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+
             OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
+                value = viewModel.email,
+                onValueChange = { viewModel.email = it },
                 label = { Text("Correo electrónico") },
-                placeholder = { Text("tu.email@amorettiexchange.com") },
+                placeholder = { Text("usuario@app.com") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
@@ -104,16 +106,17 @@ fun LoginScreen(onEmployeeLogin: () -> Unit, onAdminLogin: () -> Unit) {
             Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
-                value = pass,
-                onValueChange = { pass = it },
+                value = viewModel.password,
+                onValueChange = { viewModel.password = it },
                 label = { Text("Contraseña") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester),
                 singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = {
-                    loginAction()
+                    viewModel.login()
                     focusManager.clearFocus()
                 })
             )
@@ -121,20 +124,19 @@ fun LoginScreen(onEmployeeLogin: () -> Unit, onAdminLogin: () -> Unit) {
             Spacer(Modifier.height(30.dp))
 
             Button(
-                onClick = loginAction,
+                onClick = { viewModel.login() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF0A1A2F)
-                )
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A1A2F)),
+                enabled = !viewModel.isLoading
             ) {
-                Text(
-                    "Iniciar Sesión",
-                    fontSize = 16.sp,
-                    color = Color.White
-                )
+                if (viewModel.isLoading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Iniciar Sesión", fontSize = 16.sp, color = Color.White)
+                }
             }
         }
     }

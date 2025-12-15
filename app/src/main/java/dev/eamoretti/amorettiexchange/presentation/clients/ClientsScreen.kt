@@ -1,6 +1,7 @@
 package dev.eamoretti.amorettiexchange.presentation.clients
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,32 +9,32 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.eamoretti.amorettiexchange.presentation.clients.components.ClientListItem
-
-data class Client(
-    val name: String,
-    val ruc: String,
-    val phone: String
-)
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientsScreen(
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
+    onNavigateToRegisterClient: () -> Unit,
+    viewModel: ClientsViewModel = viewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
-    val clients = listOf(
-        Client("INVERSIONES Y NEGOCIOS CORPORATIVOS G.P.", "20611921701", "959224270"),
-        Client("INMOBILIARIA VALEISA SAC", "20510510449", "912567088"),
-        Client("BARRERA BENAVIDES JUANA MARIA LUISA", "08208278", "908708558"),
-        Client("CARLOS ALEJANDRO CARRIONOL RAYGADA", "45371282", "989163077")
-    )
+
+    // Estado para la animación de rotación
+    val rotation = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -44,21 +45,46 @@ fun ClientsScreen(
                         Icon(Icons.Default.Menu, contentDescription = "Menú")
                     }
                 },
+                actions = {
+                    // BOTÓN REFRESH ANIMADO
+                    IconButton(onClick = {
+                        scope.launch {
+                            // Gira 360 grados en 1 segundo
+                            rotation.animateTo(
+                                targetValue = rotation.value + 360f,
+                                animationSpec = tween(durationMillis = 1000)
+                            )
+                        }
+                        viewModel.refresh()
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Actualizar",
+                            tint = Color.White,
+                            modifier = Modifier.rotate(rotation.value)
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFF092B5A),
                     titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 )
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* TODO: Navigate to client registration */ },
+                onClick = onNavigateToRegisterClient,
                 containerColor = Color(0xFF0A1A2F),
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Registrar Cliente")
+                Row(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Registrar Cliente")
+                }
             }
         }
     ) { paddingValues ->
@@ -70,14 +96,37 @@ fun ClientsScreen(
                     .fillMaxWidth()
                     .padding(16.dp),
                 placeholder = { Text("Buscar cliente...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") }
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+                shape = RoundedCornerShape(12.dp)
             )
-            LazyColumn(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(clients.filter { it.name.contains(searchQuery, ignoreCase = true) }) { client ->
-                    ClientListItem(client = client)
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    uiState.isLoading -> {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
+                    uiState.error != null -> {
+                        Text(
+                            text = uiState.error ?: "Error desconocido",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    else -> {
+                        val filteredClients = uiState.clients.filter {
+                            it.razonSocial.contains(searchQuery, ignoreCase = true) ||
+                                    (it.documento ?: "").contains(searchQuery)
+                        }
+
+                        LazyColumn(
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(filteredClients) { cliente ->
+                                ClientListItem(client = cliente)
+                            }
+                        }
+                    }
                 }
             }
         }
