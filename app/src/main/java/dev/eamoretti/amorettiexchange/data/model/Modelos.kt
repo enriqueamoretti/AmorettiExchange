@@ -26,6 +26,23 @@ data class PostResponse(
     @SerializedName("id") val idGenerado: Long?
 )
 
+// --- NUEVOS MODELOS PARA EL AGENTE IA ---
+data class ChatRequest(
+    val mensaje: String
+)
+
+data class ChatResponse(
+    val success: Boolean,
+    val reply: String?,
+    val error: String?
+)
+
+data class ChatMessage(
+    val text: String,
+    val isFromUser: Boolean,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
 // --- MODELOS DE DATOS ---
 
 data class Usuario(

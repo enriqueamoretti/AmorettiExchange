@@ -41,4 +41,8 @@ interface CambistaService {
         @Query("year") year: Int,
         @Query("month") month: Int
     ): Response<ApiResponse<ResumenMensual>>
+
+    // 5. AGENTE IA (NUEVO)
+    @POST("api/chat")
+    suspend fun chatWithAgent(@Body request: ChatRequest): Response<ChatResponse>
 }

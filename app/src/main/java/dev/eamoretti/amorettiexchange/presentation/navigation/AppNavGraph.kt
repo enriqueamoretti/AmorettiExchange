@@ -8,6 +8,7 @@ import dev.eamoretti.amorettiexchange.presentation.auth.LoginScreen
 import dev.eamoretti.amorettiexchange.presentation.clients.RegisterClientScreen
 import dev.eamoretti.amorettiexchange.presentation.home.HomeScreen
 import dev.eamoretti.amorettiexchange.presentation.transactions.RegisterTransactionScreen
+import dev.eamoretti.amorettiexchange.presentation.agent.AgentChatScreen // IMPORTANTE
 
 @Composable
 fun AppNavGraph() {
@@ -47,7 +48,8 @@ fun AppNavGraph() {
                     // Antes de navegar, marcamos que estamos en el contexto de Transacciones
                     currentScreen = AppScreen.Transactions
                     navController.navigate(AppScreen.RegisterTransaction.route)
-                }
+                },
+                onNavigateToAgent = { navController.navigate(AppScreen.AgentChat.route) }
             )
         }
 
@@ -64,6 +66,11 @@ fun AppNavGraph() {
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+
+        // PANTALLA DEL AGENTE IA (NUEVO)
+        composable(AppScreen.AgentChat.route) {
+            AgentChatScreen(navController = navController)
+        }
     }
 }
 
@@ -79,4 +86,5 @@ sealed class AppScreen(val route: String) {
     // Pantallas independientes
     object RegisterClient : AppScreen("register_client")
     object RegisterTransaction : AppScreen("register_transaction")
+    object AgentChat : AppScreen("agent_chat") // RUTA NUEVA
 }
