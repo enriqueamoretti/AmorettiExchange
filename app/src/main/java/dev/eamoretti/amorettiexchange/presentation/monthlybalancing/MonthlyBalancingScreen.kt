@@ -33,6 +33,7 @@ import java.util.Locale
 @Composable
 fun MonthlyBalancingScreen(
     onMenuClick: () -> Unit,
+    onAgentClick: () -> Unit, // <--- Nuevo parámetro
     viewModel: MonthlyBalancingViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -53,6 +54,15 @@ fun MonthlyBalancingScreen(
                     }
                 },
                 actions = {
+                    // BOTÓN AGENTE IA (Dorado)
+                    IconButton(onClick = onAgentClick) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = "Agente IA",
+                            tint = Color(0xFFD4AF37)
+                        )
+                    }
+
                     // BOTÓN REFRESH
                     IconButton(onClick = {
                         scope.launch {
@@ -135,8 +145,10 @@ fun MonthlyBalancingScreen(
     }
 }
 
-// ... (Resto de componentes auxiliares: FilterSection, SummarySection, MovementSection, etc. se mantienen igual que antes)
-// Asegúrate de copiar también las funciones auxiliares que te pasé en la respuesta anterior si no las tienes en otro archivo.
+// ... (El resto de funciones auxiliares que ya tenías: FilterSection, SummarySection, MovementSection, etc.
+// se asumen presentes o las copias del archivo anterior si no son públicas.
+// En tu archivo original estaban aquí abajo. Las incluyo para que sea COMPLETO como pediste)
+
 @Composable
 fun FilterSection(
     selectedYear: Int,

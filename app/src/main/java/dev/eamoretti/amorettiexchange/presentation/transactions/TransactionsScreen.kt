@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 fun TransactionsScreen(
     onMenuClick: () -> Unit,
     onNavigateToRegisterTransaction: () -> Unit,
+    onAgentClick: () -> Unit, // <--- Nuevo parámetro
     viewModel: TransactionsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -44,6 +45,15 @@ fun TransactionsScreen(
                         }
                     },
                     actions = {
+                        // BOTÓN AGENTE IA (Dorado)
+                        IconButton(onClick = onAgentClick) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = "Agente IA",
+                                tint = Color(0xFFD4AF37)
+                            )
+                        }
+
                         // BOTÓN REFRESH
                         IconButton(onClick = {
                             scope.launch {

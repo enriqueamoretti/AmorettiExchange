@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -27,6 +28,7 @@ import kotlinx.coroutines.launch
 fun ClientsScreen(
     onMenuClick: () -> Unit,
     onNavigateToRegisterClient: () -> Unit,
+    onAgentClick: () -> Unit, // <--- Nuevo parámetro
     viewModel: ClientsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -46,6 +48,15 @@ fun ClientsScreen(
                     }
                 },
                 actions = {
+                    // BOTÓN AGENTE IA (Dorado)
+                    IconButton(onClick = onAgentClick) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = "Agente IA",
+                            tint = Color(0xFFD4AF37) // Dorado Amoretti
+                        )
+                    }
+
                     // BOTÓN REFRESH ANIMADO
                     IconButton(onClick = {
                         scope.launch {

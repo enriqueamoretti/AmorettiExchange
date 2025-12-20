@@ -155,6 +155,20 @@ fun AppDrawer(
                 shape = RoundedCornerShape(50) // Píldora completa
             )
 
+            // --- AGENTE IA (NUEVO) ---
+            Spacer(Modifier.height(8.dp))
+            NavigationDrawerItem(
+                label = { Text("Agente IA", fontWeight = FontWeight.Bold, color = Color(0xFFD4AF37)) },
+                selected = currentScreen == AppScreen.AgentChat,
+                onClick = { onMenuItemClick(AppScreen.AgentChat) },
+                icon = { Icon(Icons.Default.AutoAwesome, null, tint = Color(0xFFD4AF37)) },
+                colors = NavigationDrawerItemDefaults.colors(
+                    selectedContainerColor = Color(0xFFD4AF37).copy(alpha = 0.1f),
+                    unselectedContainerColor = Color.Transparent,
+                ),
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+
             Spacer(Modifier.weight(1f))
 
             // Logout
