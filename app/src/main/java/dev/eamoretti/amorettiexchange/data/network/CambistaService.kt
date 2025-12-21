@@ -2,10 +2,7 @@ package dev.eamoretti.amorettiexchange.data.network
 
 import dev.eamoretti.amorettiexchange.data.model.*
 import retrofit2.Response
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.POST
-import retrofit2.http.Query
+import retrofit2.http.*
 
 // Clase simple para enviar usuario/pass
 data class LoginRequest(val email: String, val password: String)
@@ -22,6 +19,14 @@ interface CambistaService {
 
     @POST("api/clients")
     suspend fun guardarCliente(@Body cliente: ClienteRequest): Response<PostResponse>
+    @PUT("api/clients/{id}")
+    suspend fun editarCliente(
+        @Path("id") id: Int,
+        @Body cliente: ClienteRequest
+    ): Response<PostResponse>
+
+    @DELETE("api/clients/{id}")
+    suspend fun eliminarCliente(@Path("id") id: Int): Response<PostResponse>
 
     // 3. TRANSACCIONES
     @GET("api/transactions")
@@ -31,6 +36,9 @@ interface CambistaService {
         @Query("year") year: Int? = null,
         @Query("month") month: Int? = null
     ): Response<ApiResponse<List<Transaccion>>>
+
+    @GET("api/transactions/client/{id}")
+    suspend fun obtenerHistorialCliente(@Path("id") id: Int): Response<ApiResponse<List<Transaccion>>>
 
     @POST("api/transactions")
     suspend fun guardarTransaccion(@Body transaccion: TransaccionRequest): Response<PostResponse>
@@ -42,7 +50,7 @@ interface CambistaService {
         @Query("month") month: Int
     ): Response<ApiResponse<ResumenMensual>>
 
-    // 5. AGENTE IA (NUEVO)
+    // 5. AGENTE IA
     @POST("api/chat")
     suspend fun chatWithAgent(@Body request: ChatRequest): Response<ChatResponse>
 }

@@ -89,7 +89,13 @@ object DataRepository {
         }
     }
 
+    // Método auxiliar para obtener cliente desde memoria sin llamar API (útil para Detalle)
+    fun obtenerClienteDesdeMemoria(id: Int): Cliente? {
+        return memoryClients?.find { it.id == id }
+    }
+
     suspend fun guardarCliente(razonSocial: String, ruc: String?, tel: String?, aux: String?, cta: String?, dir: String?): Boolean {
+        // ID es null porque es nuevo
         val request = ClienteRequest(null, razonSocial, ruc, tel, aux, cta, dir)
         val response = service.guardarCliente(request)
 
@@ -101,11 +107,36 @@ object DataRepository {
         }
     }
 
+    // --- NUEVO: EDITAR CLIENTE ---
+    suspend fun editarCliente(id: Int, razonSocial: String, ruc: String?, tel: String?, aux: String?, cta: String?, dir: String?): Boolean {
+        val request = ClienteRequest(id, razonSocial, ruc, tel, aux, cta, dir)
+        val response = service.editarCliente(id, request)
+
+        if (response.isSuccessful && response.body()?.success == true) {
+            invalidarCacheGlobal()
+            return true
+        } else {
+            throw Exception(response.body()?.message ?: "Error al editar")
+        }
+    }
+
+    // --- NUEVO: ELIMINAR CLIENTE ---
+    suspend fun eliminarCliente(id: Int): Boolean {
+        val response = service.eliminarCliente(id)
+
+        if (response.isSuccessful && response.body()?.success == true) {
+            invalidarCacheGlobal()
+            return true
+        } else {
+            // Aquí capturamos el mensaje del backend (ej: "No se puede eliminar, tiene transacciones")
+            throw Exception(response.body()?.message ?: "Error al eliminar. Posiblemente tenga transacciones asociadas.")
+        }
+    }
+
     // --- TRANSACCIONES ---
 
     private var memoryTransactions: List<Transaccion>? = null
 
-    // ¡CORREGIDO! Ahora acepta 'forzarRecarga' para que no rompa tus ViewModels
     suspend fun obtenerTransacciones(forzarRecarga: Boolean = false): List<Transaccion> {
         if (!forzarRecarga && memoryTransactions != null) return memoryTransactions!!
 
@@ -116,6 +147,16 @@ object DataRepository {
             return data
         } else {
             throw Exception("Error al cargar transacciones")
+        }
+    }
+
+    // --- NUEVO: HISTORIAL POR CLIENTE ---
+    suspend fun obtenerHistorialCliente(idCliente: Int): List<Transaccion> {
+        val response = service.obtenerHistorialCliente(idCliente)
+        if (response.isSuccessful && response.body()?.success == true) {
+            return response.body()!!.data ?: emptyList()
+        } else {
+            throw Exception("Error al obtener historial del cliente")
         }
     }
 
@@ -143,5 +184,8 @@ object DataRepository {
     fun invalidarCacheGlobal() {
         memoryClients = null
         memoryTransactions = null
+        if (::prefs.isInitialized) {
+            prefs.edit().remove(KEY_CLIENTS).apply()
+        }
     }
 }

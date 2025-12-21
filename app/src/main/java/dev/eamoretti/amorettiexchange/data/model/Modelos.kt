@@ -56,6 +56,8 @@ data class Cliente(
     @SerializedName("RazonSocial") val razonSocial: String,
     @SerializedName("DocumentoIdentidad") val documento: String?,
     @SerializedName("TelefonoContacto") val telefono: String?,
+    @SerializedName("TelefonoAuxiliar") val telefonoAuxiliar: String?,
+    @SerializedName("NumeroCuenta") val numeroCuenta: String?,
     @SerializedName("Direccion") val direccion: String?
 )
 
